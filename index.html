@@ -15,7 +15,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
-.app{max-width:720px;margin:0 auto;min-height:100dvh;padding-bottom:72px}
+.app{max-width:820px;margin:0 auto;min-height:100dvh;padding-bottom:72px}
 header{position:sticky;top:0;z-index:10;background:#0f0f10cc;backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
 .top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px}
 .brand{display:flex;align-items:center;gap:10px}
@@ -40,9 +40,13 @@ main{padding:14px;display:grid;gap:14px}
 @media(min-width:640px){.grid2{grid-template-columns:1fr 1fr}}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#111111e6;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);z-index:50}
 .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;color:var(--muted);font-size:11px;border:none;background:none}
+.tab .ico{width:22px;height:22px;margin-bottom:2px}
 .tab.active{color:#fff}
 .hidden{display:none}
 input,select,textarea{width:100%;background:#111;border:1px solid var(--border);color:#fff;border-radius:10px;padding:10px}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.section-title .day{font-weight:800}
+.phaseBadge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);padding:6px 10px;border-radius:12px;background:#141414}
 </style>
 </head>
 <body>
@@ -50,16 +54,16 @@ input,select,textarea{width:100%;background:#111;border:1px solid var(--border);
   <header>
     <div class="top">
       <div class="brand"><div class="logo"></div><div><h1>Dominance Tracker</h1><small id="brief">Caricamento…</small></div></div>
-      <button id="installBtn" class="btn ghost" hidden>Installa</button>
+      <span class="phaseBadge" id="phaseBadge">—</span>
     </div>
   </header>
 
   <main>
-    <!-- HOME (solo Workout + Timer) -->
+    <!-- HOME (sempre 4 giorni visibili) -->
     <section id="page-home">
       <div class="card">
-        <h2>Allenamento di oggi</h2>
-        <div id="woToday"></div>
+        <div class="section-title"><h2>Allenamenti Settimana</h2><span class="chip">Lun · Mar · Gio · Sab</span></div>
+        <div id="weekList" class="grid2"></div>
       </div>
       <div class="card">
         <h2>Timer</h2>
@@ -134,17 +138,29 @@ input,select,textarea{width:100%;background:#111;border:1px solid var(--border);
           <button class="btn" id="export">Esporta JSON</button>
           <label class="btn ghost" for="importFile" style="cursor:pointer">Importa JSON</label>
           <input id="importFile" type="file" accept="application/json" hidden>
-          <button class="btn bad ghost" id="resetAll">Reset</button>
+          <button class="btn ghost" id="resetAll">Reset</button>
         </div>
       </div>
     </section>
   </main>
 
   <nav class="tabs">
-    <button class="tab active" data-page="home">Workout</button>
-    <button class="tab" data-page="nutrition">Nutrition</button>
-    <button class="tab" data-page="progress">Progress</button>
-    <button class="tab" data-page="profile">Profilo</button>
+    <button class="tab active" data-page="home" aria-label="Workout">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="3" stroke-width="2"/><path d="M7 7h10v10H7z" stroke-width="2"/></svg>
+      Workout
+    </button>
+    <button class="tab" data-page="nutrition" aria-label="Nutrition">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20" stroke-width="2"/><path d="M5 8h14" stroke-width="2"/></svg>
+      Nutrition
+    </button>
+    <button class="tab" data-page="progress" aria-label="Progress">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V10" stroke-width="2"/><path d="M10 20V4" stroke-width="2"/><path d="M16 20v-6" stroke-width="2"/><path d="M22 20V8" stroke-width="2"/></svg>
+      Progress
+    </button>
+    <button class="tab" data-page="profile" aria-label="Profilo">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4" stroke-width="2"/><path d="M4 22c2-4 12-4 16 0" stroke-width="2"/></svg>
+      Profilo
+    </button>
   </nav>
 </div>
 
@@ -164,14 +180,13 @@ function nextMonday(){
 const START_ISO=nextMonday();
 const TOTAL_WEEKS=12;
 
-// ======= 4 Phases, 4 days/sett (Lun, Mar, Gio, Sab) =======
+// ======= 4 Phases, giorni fissi =======
 const PHASES=[
-  {id:1,name:'Re-adaptation',weeks:[1,2], days:['Lunedì','Martedì','Giovedì','Sabato'], rpe:'5-6'},
-  {id:2,name:'Building',weeks:[3,4,5,6], days:['Lunedì','Martedì','Giovedì','Sabato'], rpe:'6-7'},
-  {id:3,name:'Peak Recovery',weeks:[7,8,9,10], days:['Lunedì','Martedì','Giovedì','Sabato'], rpe:'7-8'},
-  {id:4,name:'Dominance',weeks:[11,12], days:['Lunedì','Martedì','Giovedì','Sabato'], rpe:'4-8'}
+  {id:1,name:'Re-adaptation',weeks:[1,2], rpe:'5-6'},
+  {id:2,name:'Building',weeks:[3,4,5,6], rpe:'6-7'},
+  {id:3,name:'Peak Recovery',weeks:[7,8,9,10], rpe:'7-8'},
+  {id:4,name:'Dominance',weeks:[11,12], rpe:'4-8'}
 ];
-
 function weekFromDate(iso){
   const st=parseISO(START_ISO);
   const d=parseISO(iso);
@@ -185,163 +200,119 @@ function phaseFromWeek(w){
   return PHASES[3];
 }
 
-// ======= Workout library (estratto coerente con PDF) =======
-function exFor(week, day){ // always LUN, MAR, GIO, SAB
-  // Phase 1: tecnica + base
-  const P1 = {
-    'Lunedì': [
-      {n:'Pull-ups', sets:3, reps:'5-6', rpe:'5-6', rest:120},
-      {n:'Dumbbell Bench Press', sets:3, reps:'8', rpe:'5-6', rest:90},
-      {n:'Dumbbell Rows', sets:3, reps:'10', rpe:'5-6', rest:60},
-    ],
-    'Martedì': [
-      {n:'Goblet Squat', sets:3, reps:'12', rpe:'5-6', rest:90},
-      {n:'Single Leg Deadlift', sets:3, reps:'10/side', rpe:'6', rest:60},
-      {n:"Farmer's Carry", sets:3, reps:'30 passi', rpe:'5-6', rest:60},
-    ],
-    'Giovedì': [
-      {n:'Dips', sets:3, reps:'8-10', rpe:'5-6', rest:90},
-      {n:'Pike Push-ups', sets:3, reps:'10', rpe:'5', rest:60},
-      {n:'Dumbbell Curl', sets:2, reps:'12', rpe:'5', rest:60},
-    ],
-    'Sabato': [
-      {n:'Step-ups', sets:3, reps:'12/side', rpe:'5-6', rest:60},
-      {n:'Plank', sets:3, reps:'30-45 sec', rpe:'5', rest:30},
-      {n:'Calf Raises', sets:3, reps:'15', rpe:'5', rest:45},
-    ]
-  };
-  // Phase 2: forza + volume
-  const P2 = {
-    'Lunedì': [
-      {n:'Pull-ups', sets:4, reps:'5-7', rpe:'7', rest:150},
-      {n:'Dumbbell Bench Press', sets:4, reps:'6-8', rpe:'6-7', rest:90},
-      {n:'Dumbbell Rows', sets:4, reps:'6-8', rpe:'6-7', rest:90},
-    ],
-    'Martedì': [
-      {n:'Goblet Squat', sets:4, reps:'8-10', rpe:'7', rest:120},
-      {n:'Single Leg Deadlift', sets:3, reps:'10/side', rpe:'6-7', rest:90},
-      {n:"Farmer's Carry Heavy", sets:3, reps:'40 passi', rpe:'6-7', rest:60},
-    ],
-    'Giovedì': [
-      {n:'Dips', sets:3, reps:'8-10', rpe:'6-7', rest:90},
-      {n:'Shoulder Press', sets:4, reps:'8-10', rpe:'6-7', rest:90},
-      {n:'Dumbbell Flye', sets:3, reps:'10-12', rpe:'6', rest:60},
-    ],
-    'Sabato': [
-      {n:'Bulgarian Split Squat', sets:3, reps:'10/side', rpe:'6-7', rest:60},
-      {n:'Single Leg RDL', sets:3, reps:'12/side', rpe:'6-7', rest:60},
-      {n:"Farmer's Carry", sets:3, reps:'60 passi', rpe:'6', rest:60},
-    ]
-  };
-  // Phase 3: peak
-  const P3 = {
-    'Lunedì': [
-      {n:'Pull-ups', sets:5, reps:'5-8', rpe:'8', rest:180},
-      {n:'Dumbbell Bench', sets:4, reps:'6-8', rpe:'7-8', rest:120},
-      {n:'Rows', sets:4, reps:'6-8', rpe:'7-8', rest:120},
-    ],
-    'Martedì': [
-      {n:'Goblet Squat', sets:5, reps:'6-8', rpe:'8', rest:150},
-      {n:'Single Leg Deadlift', sets:4, reps:'8/side', rpe:'7-8', rest:120},
-      {n:"Farmer's Carry Heavy", sets:3, reps:'50 passi', rpe:'7', rest:90},
-    ],
-    'Giovedì': [
-      {n:'Shoulder Press', sets:4, reps:'10-12', rpe:'7', rest:90},
-      {n:'Dumbbell Flye', sets:3, reps:'12-15', rpe:'6-7', rest:60},
-      {n:'Curl', sets:3, reps:'12-15', rpe:'6', rest:60},
-    ],
-    'Sabato': [
-      {n:'Bulgarian Split Squat', sets:3, reps:'12/side', rpe:'6-7', rest:60},
-      {n:'Single Leg RDL', sets:3, reps:'12-15/side', rpe:'7', rest:60},
-      {n:"Farmer's Carry HEAVY", sets:3, reps:'70 passi', rpe:'6-7', rest:60},
-    ]
-  };
-  // Phase 4: week 11 deload, week 12 PR
-  const P4W11 = {
-    'Lunedì': [
-      {n:'Pull-ups', sets:3, reps:'5-6', rpe:'6-7', rest:120},
-      {n:'Bench', sets:3, reps:'6-8', rpe:'6-7', rest:90},
-    ],
-    'Martedì': [
-      {n:'Goblet Squat', sets:3, reps:'8-10', rpe:'6-7', rest:90},
-      {n:'Single Leg Deadlift', sets:3, reps:'8-10/side', rpe:'6-7', rest:90},
-    ],
-    'Giovedì': [
-      {n:'Rows', sets:3, reps:'6-8', rpe:'6-7', rest:90},
-      {n:'Dips', sets:3, reps:'8-10', rpe:'6-7', rest:90},
-    ],
-    'Sabato': [
-      {n:'Bulgarian Split Squat', sets:2, reps:'10/side', rpe:'6', rest:60},
-      {n:"Farmer's Carry", sets:3, reps:'50 passi', rpe:'6', rest:60},
-    ]
-  };
-  const P4W12U = {
-    'Lunedì': [
-      {n:'Pull-ups', sets:4, reps:'max (goal 12+)', rpe:'8', rest:120},
-      {n:'Dumbbell Bench', sets:4, reps:'6-8', rpe:'7-8', rest:120},
-    ],
-    'Martedì': [
-      {n:'Goblet Squat', sets:4, reps:'10-12 (goal 15+)', rpe:'8', rest:90},
-      {n:'Single Leg Deadlift', sets:4, reps:'8-10/side', rpe:'7-8', rest:120},
-    ],
-    'Giovedì': [
-      {n:'Shoulder Press', sets:4, reps:'10-12', rpe:'7-8', rest:90},
-      {n:'Tricep Dips', sets:3, reps:'12-15 (goal 20+)', rpe:'7-8', rest:90},
-    ],
-    'Sabato': [
-      {n:"Farmer's Carry HEAVY", sets:3, reps:'50+ passi', rpe:'7-8', rest:60},
-      {n:'Bulgarian Split Squat', sets:3, reps:'10-12/side', rpe:'6-7', rest:60},
-    ]
-  };
-
-  const w=week;
-  if(w<=2) return P1[day]||[];
-  if(w<=6) return P2[day]||[];
-  if(w<=10) return P3[day]||[];
-  if(w===11) return P4W11[day]||[];
-  return P4W12U[day]||[];
+// ======= Workout library per fase (coerente con v2) =======
+function exFor(week, day){
+  const P1={'Lunedì':[
+      {n:'Pull-ups',sets:3,reps:'5-6',rpe:'5-6',rest:120},
+      {n:'Dumbbell Bench Press',sets:3,reps:'8',rpe:'5-6',rest:90},
+      {n:'Dumbbell Rows',sets:3,reps:'10',rpe:'5-6',rest:60},
+    ],'Martedì':[
+      {n:'Goblet Squat',sets:3,reps:'12',rpe:'5-6',rest:90},
+      {n:'Single Leg Deadlift',sets:3,reps:'10/side',rpe:'6',rest:60},
+      {"n":"Farmer's Carry",sets:3,reps:'30 passi',rpe:'5-6',rest:60},
+    ],'Giovedì':[
+      {n:'Dips',sets:3,reps:'8-10',rpe:'5-6',rest:90},
+      {n:'Pike Push-ups',sets:3,reps:'10',rpe:'5',rest:60},
+      {n:'Dumbbell Curl',sets:2,reps:'12',rpe:'5',rest:60},
+    ],'Sabato':[
+      {n:'Step-ups',sets:3,reps:'12/side',rpe:'5-6',rest:60},
+      {n:'Plank',sets:3,reps:'30-45 sec',rpe:'5',rest:30},
+      {n:'Calf Raises',sets:3,reps:'15',rpe:'5',rest:45},
+    ]};
+  const P2={'Lunedì':[
+      {n:'Pull-ups',sets:4,reps:'5-7',rpe:'7',rest:150},
+      {n:'Dumbbell Bench Press',sets:4,reps:'6-8',rpe:'6-7',rest:90},
+      {n:'Dumbbell Rows',sets:4,reps:'6-8',rpe:'6-7',rest:90},
+    ],'Martedì':[
+      {n:'Goblet Squat',sets:4,reps:'8-10',rpe:'7',rest:120},
+      {n:'Single Leg Deadlift',sets:3,reps:'10/side',rpe:'6-7',rest:90},
+      {"n":"Farmer's Carry Heavy",sets:3,reps:'40 passi',rpe:'6-7',rest:60},
+    ],'Giovedì':[
+      {n:'Dips',sets:3,reps:'8-10',rpe:'6-7',rest:90},
+      {n:'Shoulder Press',sets:4,reps:'8-10',rpe:'6-7',rest:90},
+      {n:'Dumbbell Flye',sets:3,reps:'10-12',rpe:'6',rest:60},
+    ],'Sabato':[
+      {n:'Bulgarian Split Squat',sets:3,reps:'10/side',rpe:'6-7',rest:60},
+      {n:'Single Leg RDL',sets:3,reps:'12/side',rpe:'6-7',rest:60},
+      {"n":"Farmer's Carry",sets:3,reps:'60 passi',rpe:'6',rest:60},
+    ]};
+  const P3={'Lunedì':[
+      {n:'Pull-ups',sets:5,reps:'5-8',rpe:'8',rest:180},
+      {n:'Dumbbell Bench',sets:4,reps:'6-8',rpe:'7-8',rest:120},
+      {n:'Rows',sets:4,reps:'6-8',rpe:'7-8',rest:120},
+    ],'Martedì':[
+      {n:'Goblet Squat',sets:5,reps:'6-8',rpe:'8',rest:150},
+      {n:'Single Leg Deadlift',sets:4,reps:'8/side',rpe:'7-8',rest:120},
+      {"n":"Farmer's Carry Heavy",sets:3,reps:'50 passi',rpe:'7',rest:90},
+    ],'Giovedì':[
+      {n:'Shoulder Press',sets:4,reps:'10-12',rpe:'7',rest:90},
+      {n:'Dumbbell Flye',sets:3,reps:'12-15',rpe:'6-7',rest:60},
+      {n:'Curl',sets:3,reps:'12-15',rpe:'6',rest:60},
+    ],'Sabato':[
+      {n:'Bulgarian Split Squat',sets:3,reps:'12/side',rpe:'6-7',rest:60},
+      {n:'Single Leg RDL',sets:3,reps:'12-15/side',rpe:'7',rest:60},
+      {"n":"Farmer's Carry HEAVY",sets:3,reps:'70 passi',rpe:'6-7',rest:60},
+    ]};
+  const P4W11={'Lunedì':[
+      {n:'Pull-ups',sets:3,reps:'5-6',rpe:'6-7',rest:120},
+      {n:'Bench',sets:3,reps:'6-8',rpe:'6-7',rest:90},
+    ],'Martedì':[
+      {n:'Goblet Squat',sets:3,reps:'8-10',rpe:'6-7',rest:90},
+      {n:'Single Leg Deadlift',sets:3,reps:'8-10/side',rpe:'6-7',rest:90},
+    ],'Giovedì':[
+      {n:'Rows',sets:3,reps:'6-8',rpe:'6-7',rest:90},
+      {n:'Dips',sets:3,reps:'8-10',rpe:'6-7',rest:90},
+    ],'Sabato':[
+      {n:'Bulgarian Split Squat',sets:2,reps:'10/side',rpe:'6',rest:60},
+      {"n":"Farmer's Carry",sets:3,reps:'50 passi',rpe:'6',rest:60},
+    ]};
+  const P4W12={'Lunedì':[
+      {n:'Pull-ups',sets:4,reps:'max (goal 12+)',rpe:'8',rest:120},
+      {n:'Dumbbell Bench',sets:4,reps:'6-8',rpe:'7-8',rest:120},
+    ],'Martedì':[
+      {n:'Goblet Squat',sets:4,reps:'10-12 (goal 15+)',rpe:'8',rest:90},
+      {n:'Single Leg Deadlift',sets:4,reps:'8-10/side',rpe:'7-8',rest:120},
+    ],'Giovedì':[
+      {n:'Shoulder Press',sets:4,reps:'10-12',rpe:'7-8',rest:90},
+      {n:'Tricep Dips',sets:3,reps:'12-15 (goal 20+)',rpe:'7-8',rest:90},
+    ],'Sabato':[
+      {"n":"Farmer's Carry HEAVY",sets:3,reps:'50+ passi',rpe:'7-8',rest:60},
+      {n:'Bulgarian Split Squat',sets:3,reps:'10-12/side',rpe:'6-7',rest:60},
+    ]};
+  if(week<=2) return P1[day]||[];
+  if(week<=6) return P2[day]||[];
+  if(week<=10) return P3[day]||[];
+  if(week===11) return P4W11[day]||[];
+  return P4W12[day]||[];
 }
-
-// ======= Build PLAN =======
-function buildPlan(){
-  const plan={};
-  const start=parseISO(START_ISO);
-  const end=new Date(start.getTime()+ (TOTAL_WEEKS*7-1)*DAY_MS);
-  for(let t=start; t<=end; t=new Date(t.getTime()+DAY_MS)){
-    const iso=toISO(t); const week=weekFromDate(iso); const phase=phaseFromWeek(week);
-    const day = ITD[t.getDay()];
-    if(!['Lunedì','Martedì','Giovedì','Sabato'].includes(day)){
-      plan[iso]={week, phase:phase.name, day, exercises:[]}; continue;
-    }
-    const exercises = exFor(week, day);
-    plan[iso]={week, phase:phase.name, day, exercises};
-  }
-  return plan;
-}
-const PLAN=buildPlan();
 
 // ======= Storage =======
 const store={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{ return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)), del:(k)=>localStorage.removeItem(k)};
 
-// ======= Home render =======
-function renderHome(){
-  const iso=toISO(new Date()); const d=PLAN[iso];
-  document.getElementById('brief').textContent = d?`Oggi ${iso} — Week ${d.week}/12 · ${d.phase}`:`Oggi ${iso}`;
-  const box=document.getElementById('woToday'); box.innerHTML='';
-
-  if(!d || !d.exercises.length){
-    box.innerHTML = `<div class="row"><span class="chip">REST DAY</span><span class="chip">Prossimi WO: Lun · Mar · Gio · Sab</span></div>`;
-    return;
-  }
-  const done=store.get('done:'+iso,{});
-  d.exercises.forEach((ex,i)=>{
-    const id='ex'+i; const ck = !!done[id];
-    const el = document.createElement('div'); el.className='exercise';
-    el.innerHTML = `<input type="checkbox" id="${id}" ${ck?'checked':''}>
-                    <div><div class="name">${ex.n}</div><div class="meta">${ex.sets}x${ex.reps} · RPE ${ex.rpe} · Rest ${ex.rest||60}s</div></div>
-                    <div class="chip">${ex.sets} set</div>`;
-    el.querySelector('input').addEventListener('change',e=>{done[id]=e.target.checked;store.set('done:'+iso,done)});
-    box.appendChild(el);
+// ======= Render Home: 4 giorni fissi =======
+const DAYS=['Lunedì','Martedì','Giovedì','Sabato'];
+function renderPhaseHeader(){
+  const iso=toISO(new Date()); const w=weekFromDate(iso); const ph=phaseFromWeek(w);
+  document.getElementById('brief').textContent = `Start: ${START_ISO} · Week ${w}/12`;
+  document.getElementById('phaseBadge').textContent = `Fase ${ph.id} – ${ph.name}`;
+}
+function renderWeekList(){
+  const iso=toISO(new Date()); const w=weekFromDate(iso); const ph=phaseFromWeek(w);
+  const box=document.getElementById('weekList'); box.innerHTML='';
+  DAYS.forEach(day=>{
+    const exs = exFor(w, day);
+    const card=document.createElement('div'); card.className='card';
+    const key = `done:W${w}:${day}`;
+    const done=store.get(key,{});
+    card.innerHTML = `<div class="section-title"><div class="day">${day}</div><div class="chip">RPE ${ph.rpe}</div></div><div class="space"></div>`;
+    exs.forEach((ex,i)=>{
+      const id='ex'+i; const ck=!!done[id];
+      const row=document.createElement('div'); row.className='exercise';
+      row.innerHTML = `<input type="checkbox" id="${id}" ${ck?'checked':''}><div><div class="name">${ex.n}</div><div class="meta">${ex.sets}x${ex.reps} · RPE ${ex.rpe} · Rest ${ex.rest||60}s</div></div><div class="chip">${ex.sets} set</div>`;
+      row.querySelector('input').addEventListener('change',e=>{done[id]=e.target.checked; store.set(key,done)});
+      card.appendChild(row);
+    });
+    box.appendChild(card);
   });
 }
 
@@ -449,33 +420,21 @@ document.addEventListener('change', async e=>{
   }
 });
 
-// ======= Bottom Nav (buttons work everywhere) =======
+// ======= Bottom Nav =======
 function openPage(name){
   ['home','nutrition','progress','profile'].forEach(p=>{
     document.getElementById('page-'+p).classList.toggle('hidden', p!==name);
     document.querySelector(`.tab[data-page="${p}"]`).classList.toggle('active', p===name);
   });
-  // lazy renders
   if(name==='nutrition'){ renderMeals(); renderMacros(); }
   if(name==='progress'){ renderWeeks(); }
 }
 document.querySelectorAll('.tab').forEach(b=> b.addEventListener('click', ()=> openPage(b.dataset.page)) );
 
-// ======= SW + install =======
-let deferred=null;
-window.addEventListener('beforeinstallprompt', (e)=>{e.preventDefault(); deferred=e; installBtn.hidden=false;});
-installBtn.addEventListener('click', async()=>{ if(!deferred) return; deferred.prompt(); const c=await deferred.userChoice; if(c.outcome==='accepted') installBtn.hidden=true; });
-
-// ======= Timer hooks =======
-const tDisp=document.getElementById('tDisp'); const tBar=document.getElementById('tBar');
-document.getElementById('tStart').addEventListener('click', startT);
-document.getElementById('tStop').addEventListener('click', stopT);
-document.getElementById('tReset').addEventListener('click', resetT);
-
 // ======= Export/Import/Reset =======
 document.getElementById('export').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify(localStorage,null,2)],{type:'application/json'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dominance-v2-backup.json'; a.click();
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dominance-v3-backup.json'; a.click();
 });
 document.getElementById('importFile').addEventListener('change', async e=>{
   const f=e.target.files[0]; if(!f) return; const txt=await f.text();
@@ -483,10 +442,26 @@ document.getElementById('importFile').addEventListener('change', async e=>{
 });
 document.getElementById('resetAll').addEventListener('click',()=>{ if(confirm('Reset totale?')){ localStorage.clear(); location.reload(); } });
 
+// ======= SW + install =======
+let deferred=null;
+window.addEventListener('beforeinstallprompt', (e)=>{e.preventDefault(); deferred=e; /* you can show an install button elsewhere if desired */});
+// Optional: add an install button in future
+
+// ======= Timer hooks =======
+const tDisp=document.getElementById('tDisp'); const tBar=document.getElementById('tBar');
+document.getElementById('tStart').addEventListener('click', startT);
+document.getElementById('tStop').addEventListener('click', stopT);
+document.getElementById('tReset').addEventListener('click', resetT);
+
 // ======= Init =======
 async function init(){
   if('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('/sw.js'); }catch(e){ console.warn('SW err',e);} }
-  renderHome(); loadProfile();
+  renderPhaseHeader();
+  renderWeekList();
+  loadProfile();
+  // Restore photos
+  const p0=store.get('photo:w0',null); if(p0) document.getElementById('img-w0').src=p0;
+  const p12=store.get('photo:w12',null); if(p12) document.getElementById('img-w12').src=p12;
 }
 document.addEventListener('DOMContentLoaded', init);
 </script>
