@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dominance Tracker</title>
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<style>
+:root{
+  --bg:#0f0f10; --elev:#171718; --text:#fff; --muted:#a7a7a7;
+  --accent:#C0392B; --border:#262626; --ok:#28a745; --warn:#f39c12; --bad:#e74c3c;
+  --r:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+.app{max-width:720px;margin:0 auto;min-height:100dvh;padding-bottom:72px}
+header{position:sticky;top:0;z-index:10;background:#0f0f10cc;backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:12px 14px}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;border-radius:8px;background:radial-gradient(120% 120% at 20% 20%, #c0392b 0%, #7a1912 50%, #2b0b09 100%)}
+h1{font-size:16px;margin:0}
+small{color:var(--muted)}
+main{padding:14px;display:grid;gap:14px}
+.card{background:linear-gradient(180deg,#151516,#101011);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.card h2{font-size:16px;margin:0 0 10px 0}
+.exercise{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:10px;background:#141414}
+.exercise .name{font-weight:700}
+.exercise .meta{font-size:12px;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.chip{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:12px}
+.btn{background:linear-gradient(180deg,#2b0f0c,#180807);color:#fff;border:1px solid #3a1410;padding:10px 12px;border-radius:12px;font-weight:700}
+.btn.ghost{background:#141414;border-color:var(--border)}
+.timer{display:flex;align-items:center;gap:12px}
+.time{font-weight:900;font-size:28px}
+.ring{height:8px;background:#222;border-radius:99px;overflow:hidden;flex:1}
+.ring>span{display:block;height:100%;width:0;background:#28a745;transition:width .2s ease}
+.grid2{display:grid;gap:12px}
+@media(min-width:640px){.grid2{grid-template-columns:1fr 1fr}}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:#111111e6;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);z-index:50}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;color:var(--muted);font-size:11px;border:none;background:none}
+.tab.active{color:#fff}
+.hidden{display:none}
+input,select,textarea{width:100%;background:#111;border:1px solid var(--border);color:#fff;border-radius:10px;padding:10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="top">
+      <div class="brand"><div class="logo"></div><div><h1>Dominance Tracker</h1><small id="brief">Caricamento…</small></div></div>
+      <button id="installBtn" class="btn ghost" hidden>Installa</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- HOME (solo Workout + Timer) -->
+    <section id="page-home">
+      <div class="card">
+        <h2>Allenamento di oggi</h2>
+        <div id="woToday"></div>
+      </div>
+      <div class="card">
+        <h2>Timer</h2>
+        <div class="timer">
+          <div class="time" id="tDisp">00:00</div>
+          <div class="ring"><span id="tBar"></span></div>
+          <button class="btn" id="tStart">Start</button>
+          <button class="btn ghost" id="tStop">Stop</button>
+          <button class="btn ghost" id="tReset">Reset</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- NUTRITION -->
+    <section id="page-nutrition" class="hidden">
+      <div class="card">
+        <h2>Pasti di oggi</h2>
+        <div id="meals"></div>
+      </div>
+      <div class="card">
+        <h2>Macro</h2>
+        <div id="macros"></div>
+      </div>
+      <div class="card">
+        <h2>Aggiungi pasto</h2>
+        <div class="grid2">
+          <div><label>Nome</label><input id="mName" placeholder="Pasto" /></div>
+          <div><label>Ora</label><input id="mTime" type="time" /></div>
+          <div><label>P (g)</label><input id="mP" type="number" value="0" /></div>
+          <div><label>C (g)</label><input id="mC" type="number" value="0" /></div>
+          <div><label>F (g)</label><input id="mF" type="number" value="0" /></div>
+          <div><label>Kcal</label><input id="mK" type="number" value="0" /></div>
+        </div>
+        <div style="height:8px"></div>
+        <button class="btn" id="addMeal">Aggiungi</button>
+      </div>
+    </section>
+
+    <!-- PROGRESS -->
+    <section id="page-progress" class="hidden">
+      <div class="card">
+        <h2>Settimane (peso/pull-up/sonno)</h2>
+        <div id="weeks"></div>
+      </div>
+      <div class="card">
+        <h2>Foto</h2>
+        <div class="grid2">
+          <div><label>Week 0</label><input type="file" accept="image/*" data-k="w0"><div style="height:6px"></div><img id="img-w0" style="max-width:100%;border-radius:12px;border:1px solid var(--border)"></div>
+          <div><label>Week 12</label><input type="file" accept="image/*" data-k="w12"><div style="height:6px"></div><img id="img-w12" style="max-width:100%;border-radius:12px;border:1px solid var(--border)"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFILO -->
+    <section id="page-profile" class="hidden">
+      <div class="card">
+        <h2>Profilo</h2>
+        <div class="grid2">
+          <div><label>Nome</label><input id="uName" value="MagnetiqStudio"></div>
+          <div><label>Età</label><input id="uAge" type="number" value="24"></div>
+          <div><label>Altezza (cm)</label><input id="uH" type="number" value="190"></div>
+          <div><label>Peso iniziale (kg)</label><input id="uW0" type="number" value="74"></div>
+          <div><label>Body Fat (%)</label><input id="uBf" type="number" step="0.1" value="10.5"></div>
+          <div><label>Goal (kg)</label><input id="uGoal" type="number" value="78"></div>
+        </div>
+        <div style="height:8px"></div>
+        <button class="btn" id="saveProfile">Salva</button>
+      </div>
+      <div class="card">
+        <h2>Backup</h2>
+        <div class="row">
+          <button class="btn" id="export">Esporta JSON</button>
+          <label class="btn ghost" for="importFile" style="cursor:pointer">Importa JSON</label>
+          <input id="importFile" type="file" accept="application/json" hidden>
+          <button class="btn bad ghost" id="resetAll">Reset</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button class="tab active" data-page="home">Workout</button>
+    <button class="tab" data-page="nutrition">Nutrition</button>
+    <button class="tab" data-page="progress">Progress</button>
+    <button class="tab" data-page="profile">Profilo</button>
+  </nav>
+</div>
+
+<script>
+// ======= Utils =======
+const DAY_MS=86400000;
+const ITD=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+const toISO=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)}
+const parseISO=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function nextMonday(){
+  const now=new Date(); const dow=now.getDay()||7; // 1..7 Mon=1
+  const add = (8-dow)%7 || 7;
+  const t=new Date(now.getFullYear(),now.getMonth(),now.getDate()+add); t.setHours(0,0,0,0); return toISO(t);
+}
+const START_ISO=nextMonday();
+const TOTAL_WEEKS=12;
+
+// ======= 4 Phases, 4 days/sett (Lun, Mar, Gio, Sab) =======
+const PHASES=[
+  {id:1,name:'Re-adaptation',weeks:[1,2], days:['Lunedì','Martedì','Giovedì','Sabato'], rpe:'5-6'},
+  {id:2,name:'Building',weeks:[3,4,5,6], days:['Lunedì','Martedì','Giovedì','Sabato'], rpe:'6-7'},
+  {id:3,name:'Peak Recovery',weeks:[7,8,9,10], days:['Lunedì','Martedì','Giovedì','Sabato'], rpe:'7-8'},
+  {id:4,name:'Dominance',weeks:[11,12], days:['Lunedì','Martedì','Giovedì','Sabato'], rpe:'4-8'}
+];
+
+function weekFromDate(iso){
+  const st=parseISO(START_ISO);
+  const d=parseISO(iso);
+  const diff=Math.floor((d-st)/DAY_MS);
+  return clamp(Math.floor(diff/7)+1,1,TOTAL_WEEKS);
+}
+function phaseFromWeek(w){
+  if(w<=2) return PHASES[0];
+  if(w<=6) return PHASES[1];
+  if(w<=10) return PHASES[2];
+  return PHASES[3];
+}
+
+// ======= Workout library (estratto coerente con PDF) =======
+function exFor(week, day){ // always LUN, MAR, GIO, SAB
+  // Phase 1: tecnica + base
+  const P1 = {
+    'Lunedì': [
+      {n:'Pull-ups', sets:3, reps:'5-6', rpe:'5-6', rest:120},
+      {n:'Dumbbell Bench Press', sets:3, reps:'8', rpe:'5-6', rest:90},
+      {n:'Dumbbell Rows', sets:3, reps:'10', rpe:'5-6', rest:60},
+    ],
+    'Martedì': [
+      {n:'Goblet Squat', sets:3, reps:'12', rpe:'5-6', rest:90},
+      {n:'Single Leg Deadlift', sets:3, reps:'10/side', rpe:'6', rest:60},
+      {n:"Farmer's Carry", sets:3, reps:'30 passi', rpe:'5-6', rest:60},
+    ],
+    'Giovedì': [
+      {n:'Dips', sets:3, reps:'8-10', rpe:'5-6', rest:90},
+      {n:'Pike Push-ups', sets:3, reps:'10', rpe:'5', rest:60},
+      {n:'Dumbbell Curl', sets:2, reps:'12', rpe:'5', rest:60},
+    ],
+    'Sabato': [
+      {n:'Step-ups', sets:3, reps:'12/side', rpe:'5-6', rest:60},
+      {n:'Plank', sets:3, reps:'30-45 sec', rpe:'5', rest:30},
+      {n:'Calf Raises', sets:3, reps:'15', rpe:'5', rest:45},
+    ]
+  };
+  // Phase 2: forza + volume
+  const P2 = {
+    'Lunedì': [
+      {n:'Pull-ups', sets:4, reps:'5-7', rpe:'7', rest:150},
+      {n:'Dumbbell Bench Press', sets:4, reps:'6-8', rpe:'6-7', rest:90},
+      {n:'Dumbbell Rows', sets:4, reps:'6-8', rpe:'6-7', rest:90},
+    ],
+    'Martedì': [
+      {n:'Goblet Squat', sets:4, reps:'8-10', rpe:'7', rest:120},
+      {n:'Single Leg Deadlift', sets:3, reps:'10/side', rpe:'6-7', rest:90},
+      {n:"Farmer's Carry Heavy", sets:3, reps:'40 passi', rpe:'6-7', rest:60},
+    ],
+    'Giovedì': [
+      {n:'Dips', sets:3, reps:'8-10', rpe:'6-7', rest:90},
+      {n:'Shoulder Press', sets:4, reps:'8-10', rpe:'6-7', rest:90},
+      {n:'Dumbbell Flye', sets:3, reps:'10-12', rpe:'6', rest:60},
+    ],
+    'Sabato': [
+      {n:'Bulgarian Split Squat', sets:3, reps:'10/side', rpe:'6-7', rest:60},
+      {n:'Single Leg RDL', sets:3, reps:'12/side', rpe:'6-7', rest:60},
+      {n:"Farmer's Carry", sets:3, reps:'60 passi', rpe:'6', rest:60},
+    ]
+  };
+  // Phase 3: peak
+  const P3 = {
+    'Lunedì': [
+      {n:'Pull-ups', sets:5, reps:'5-8', rpe:'8', rest:180},
+      {n:'Dumbbell Bench', sets:4, reps:'6-8', rpe:'7-8', rest:120},
+      {n:'Rows', sets:4, reps:'6-8', rpe:'7-8', rest:120},
+    ],
+    'Martedì': [
+      {n:'Goblet Squat', sets:5, reps:'6-8', rpe:'8', rest:150},
+      {n:'Single Leg Deadlift', sets:4, reps:'8/side', rpe:'7-8', rest:120},
+      {n:"Farmer's Carry Heavy", sets:3, reps:'50 passi', rpe:'7', rest:90},
+    ],
+    'Giovedì': [
+      {n:'Shoulder Press', sets:4, reps:'10-12', rpe:'7', rest:90},
+      {n:'Dumbbell Flye', sets:3, reps:'12-15', rpe:'6-7', rest:60},
+      {n:'Curl', sets:3, reps:'12-15', rpe:'6', rest:60},
+    ],
+    'Sabato': [
+      {n:'Bulgarian Split Squat', sets:3, reps:'12/side', rpe:'6-7', rest:60},
+      {n:'Single Leg RDL', sets:3, reps:'12-15/side', rpe:'7', rest:60},
+      {n:"Farmer's Carry HEAVY", sets:3, reps:'70 passi', rpe:'6-7', rest:60},
+    ]
+  };
+  // Phase 4: week 11 deload, week 12 PR
+  const P4W11 = {
+    'Lunedì': [
+      {n:'Pull-ups', sets:3, reps:'5-6', rpe:'6-7', rest:120},
+      {n:'Bench', sets:3, reps:'6-8', rpe:'6-7', rest:90},
+    ],
+    'Martedì': [
+      {n:'Goblet Squat', sets:3, reps:'8-10', rpe:'6-7', rest:90},
+      {n:'Single Leg Deadlift', sets:3, reps:'8-10/side', rpe:'6-7', rest:90},
+    ],
+    'Giovedì': [
+      {n:'Rows', sets:3, reps:'6-8', rpe:'6-7', rest:90},
+      {n:'Dips', sets:3, reps:'8-10', rpe:'6-7', rest:90},
+    ],
+    'Sabato': [
+      {n:'Bulgarian Split Squat', sets:2, reps:'10/side', rpe:'6', rest:60},
+      {n:"Farmer's Carry", sets:3, reps:'50 passi', rpe:'6', rest:60},
+    ]
+  };
+  const P4W12U = {
+    'Lunedì': [
+      {n:'Pull-ups', sets:4, reps:'max (goal 12+)', rpe:'8', rest:120},
+      {n:'Dumbbell Bench', sets:4, reps:'6-8', rpe:'7-8', rest:120},
+    ],
+    'Martedì': [
+      {n:'Goblet Squat', sets:4, reps:'10-12 (goal 15+)', rpe:'8', rest:90},
+      {n:'Single Leg Deadlift', sets:4, reps:'8-10/side', rpe:'7-8', rest:120},
+    ],
+    'Giovedì': [
+      {n:'Shoulder Press', sets:4, reps:'10-12', rpe:'7-8', rest:90},
+      {n:'Tricep Dips', sets:3, reps:'12-15 (goal 20+)', rpe:'7-8', rest:90},
+    ],
+    'Sabato': [
+      {n:"Farmer's Carry HEAVY", sets:3, reps:'50+ passi', rpe:'7-8', rest:60},
+      {n:'Bulgarian Split Squat', sets:3, reps:'10-12/side', rpe:'6-7', rest:60},
+    ]
+  };
+
+  const w=week;
+  if(w<=2) return P1[day]||[];
+  if(w<=6) return P2[day]||[];
+  if(w<=10) return P3[day]||[];
+  if(w===11) return P4W11[day]||[];
+  return P4W12U[day]||[];
+}
+
+// ======= Build PLAN =======
+function buildPlan(){
+  const plan={};
+  const start=parseISO(START_ISO);
+  const end=new Date(start.getTime()+ (TOTAL_WEEKS*7-1)*DAY_MS);
+  for(let t=start; t<=end; t=new Date(t.getTime()+DAY_MS)){
+    const iso=toISO(t); const week=weekFromDate(iso); const phase=phaseFromWeek(week);
+    const day = ITD[t.getDay()];
+    if(!['Lunedì','Martedì','Giovedì','Sabato'].includes(day)){
+      plan[iso]={week, phase:phase.name, day, exercises:[]}; continue;
+    }
+    const exercises = exFor(week, day);
+    plan[iso]={week, phase:phase.name, day, exercises};
+  }
+  return plan;
+}
+const PLAN=buildPlan();
+
+// ======= Storage =======
+const store={get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{ return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)), del:(k)=>localStorage.removeItem(k)};
+
+// ======= Home render =======
+function renderHome(){
+  const iso=toISO(new Date()); const d=PLAN[iso];
+  document.getElementById('brief').textContent = d?`Oggi ${iso} — Week ${d.week}/12 · ${d.phase}`:`Oggi ${iso}`;
+  const box=document.getElementById('woToday'); box.innerHTML='';
+
+  if(!d || !d.exercises.length){
+    box.innerHTML = `<div class="row"><span class="chip">REST DAY</span><span class="chip">Prossimi WO: Lun · Mar · Gio · Sab</span></div>`;
+    return;
+  }
+  const done=store.get('done:'+iso,{});
+  d.exercises.forEach((ex,i)=>{
+    const id='ex'+i; const ck = !!done[id];
+    const el = document.createElement('div'); el.className='exercise';
+    el.innerHTML = `<input type="checkbox" id="${id}" ${ck?'checked':''}>
+                    <div><div class="name">${ex.n}</div><div class="meta">${ex.sets}x${ex.reps} · RPE ${ex.rpe} · Rest ${ex.rest||60}s</div></div>
+                    <div class="chip">${ex.sets} set</div>`;
+    el.querySelector('input').addEventListener('change',e=>{done[id]=e.target.checked;store.set('done:'+iso,done)});
+    box.appendChild(el);
+  });
+}
+
+// ======= Timer =======
+let t0=null, tid=null, elapsed=0;
+const LIMIT=60*60*1000;
+function updTimer(){
+  const mm=String(Math.floor(elapsed/60000)).padStart(2,'0');
+  const ss=String(Math.floor((elapsed%60000)/1000)).padStart(2,'0');
+  tDisp.textContent=`${mm}:${ss}`;
+  const p=Math.min(1,elapsed/LIMIT);
+  tBar.style.width=(p*100)+'%';
+  tBar.style.background = p<0.75?'#28a745':(p<0.92?'#f39c12':'#e74c3c');
+}
+function startT(){ if(tid) return; t0=Date.now()-elapsed; tid=setInterval(()=>{elapsed=Date.now()-t0; if(elapsed>=LIMIT){elapsed=LIMIT; stopT(); alert('Tempo completato');} updTimer();},250)}
+function stopT(){ if(!tid) return; clearInterval(tid); tid=null; updTimer(); }
+function resetT(){ stopT(); elapsed=0; updTimer(); }
+
+// ======= Nutrition =======
+const TARGET={kcal:2892, p:146, c:380, f:50};
+const BASE=[
+  {name:'Colazione', time:'08:00', p:25, c:50, f:12, kcal:408},
+  {name:'Pranzo', time:'13:00', p:40, c:80, f:10, kcal:570},
+  {name:'Pre-workout', time:'17:30', p:20, c:50, f:2, kcal:298},
+  {name:'Cena', time:'20:15', p:35, c:60, f:15, kcal:515}
+];
+function dkey(){return 'day:'+toISO(new Date())}
+function getD(){return store.get(dkey(),{meals:[...BASE], logged:{}})}
+function saveD(x){store.set(dkey(),x); renderMeals(); renderMacros();}
+function renderMeals(){
+  const {meals,logged}=getD(); const box=document.getElementById('meals'); box.innerHTML='';
+  meals.forEach((m,i)=>{
+    const id='m'+i; const on=!!logged[id];
+    const el=document.createElement('div'); el.className='exercise';
+    el.innerHTML=`<input type="checkbox" id="${id}" ${on?'checked':''}><div><div class="name">${m.name} <span class="meta">${m.time||''}</span></div><div class="meta">P ${m.p} · C ${m.c} · F ${m.f} · ${m.kcal} kcal</div></div><div class="chip">${m.kcal} kcal</div>`;
+    el.querySelector('input').addEventListener('change',e=>{logged[id]=e.target.checked; saveD({meals,logged})});
+    box.appendChild(el);
+  });
+}
+function renderMacros(){
+  const {meals,logged}=getD(); let P=0,C=0,F=0,K=0;
+  Object.entries(logged).forEach(([k,on])=>{if(on){const m=meals[+k.slice(1)]; P+=m.p; C+=m.c; F+=m.f; K+=m.kcal;}});
+  const el=document.getElementById('macros'); el.innerHTML='';
+  function bar(lbl,val,max,unit){
+    const pct=Math.min(1,val/max); const col=pct<.8?'var(--bad)':(pct<1?'var(--warn)':'var(--ok)');
+    return `<div class="row" style="justify-content:space-between"><div>${lbl}: <b>${Math.round(val)}${unit}</b> / ${max}${unit}</div><div>${Math.round(pct*100)}%</div></div><div style="height:8px;background:#222;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct*100}%;background:${col}"></div></div><div style="height:8px"></div>`;
+  }
+  el.insertAdjacentHTML('beforeend',bar('Proteine',P,TARGET.p,'g'));
+  el.insertAdjacentHTML('beforeend',bar('Carboidrati',C,TARGET.c,'g'));
+  el.insertAdjacentHTML('beforeend',bar('Grassi',F,TARGET.f,'g'));
+  el.insertAdjacentHTML('beforeend',bar('Kcal',K,TARGET.kcal,'kcal'));
+}
+document.addEventListener('click', e=>{
+  if(e.target && e.target.id==='addMeal'){
+    const m={name:mName.value||'Custom', time:mTime.value||'', p:+mP.value||0, c:+mC.value||0, f:+mF.value||0, kcal:+mK.value||0};
+    const d=getD(); d.meals.push(m); saveD(d);
+    mName.value=''; mTime.value=''; mP.value=0; mC.value=0; mF.value=0; mK.value=0;
+  }
+});
+
+// ======= Progress =======
+function getProg(){return store.get('progress', Array.from({length:TOTAL_WEEKS},(_,i)=>({week:i+1,weight:null,pullups:null,sleep:null,notes:''})))}
+function saveProg(p){store.set('progress',p); renderWeeks();}
+function renderWeeks(){
+  const box=document.getElementById('weeks'); box.innerHTML='';
+  const p=getProg();
+  p.forEach(w=>{
+    const el=document.createElement('div'); el.className='exercise'; el.style.alignItems='start';
+    el.innerHTML=`<div class="chip">W${w.week}</div>
+      <div class="grid2">
+        <div><label>Peso</label><input type="number" step="0.1" value="${w.weight??''}" data-k="weight" data-w="${w.week}"></div>
+        <div><label>Pull-ups</label><input type="number" value="${w.pullups??''}" data-k="pullups" data-w="${w.week}"></div>
+        <div><label>Sleep (h)</label><input type="number" step="0.1" value="${w.sleep??''}" data-k="sleep" data-w="${w.week}"></div>
+        <div><label>Note</label><input value="${w.notes??''}" data-k="notes" data-w="${w.week}"></div>
+      </div>`;
+    box.appendChild(el);
+  });
+  box.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const p=getProg(); const i=+inp.dataset.w-1; const k=inp.dataset.k;
+      p[i][k] = inp.type==='number' ? (inp.value===''?null:+inp.value) : inp.value;
+      saveProg(p);
+    });
+  });
+}
+
+// ======= Profile =======
+function saveProfile(){
+  const prof={name:uName.value, age:+uAge.value, h:+uH.value, w0:+uW0.value, bf:+uBf.value, goal:+uGoal.value};
+  store.set('profile',prof); alert('Profilo salvato');
+}
+function loadProfile(){
+  const p=store.get('profile',null); if(!p) return;
+  uName.value=p.name; uAge.value=p.age; uH.value=p.h; uW0.value=p.w0; uBf.value=p.bf; uGoal.value=p.goal;
+}
+
+// ======= Photos =======
+document.addEventListener('change', async e=>{
+  if(e.target && e.target.matches('input[type=file][data-k]')){
+    const f=e.target.files[0]; if(!f) return;
+    const data=await f.arrayBuffer(); const base= btoa(String.fromCharCode(...new Uint8Array(data)));
+    const url=`data:${f.type};base64,${base}`;
+    store.set('photo:'+e.target.dataset.k, url);
+    document.getElementById('img-'+e.target.dataset.k).src=url;
+  }
+});
+
+// ======= Bottom Nav (buttons work everywhere) =======
+function openPage(name){
+  ['home','nutrition','progress','profile'].forEach(p=>{
+    document.getElementById('page-'+p).classList.toggle('hidden', p!==name);
+    document.querySelector(`.tab[data-page="${p}"]`).classList.toggle('active', p===name);
+  });
+  // lazy renders
+  if(name==='nutrition'){ renderMeals(); renderMacros(); }
+  if(name==='progress'){ renderWeeks(); }
+}
+document.querySelectorAll('.tab').forEach(b=> b.addEventListener('click', ()=> openPage(b.dataset.page)) );
+
+// ======= SW + install =======
+let deferred=null;
+window.addEventListener('beforeinstallprompt', (e)=>{e.preventDefault(); deferred=e; installBtn.hidden=false;});
+installBtn.addEventListener('click', async()=>{ if(!deferred) return; deferred.prompt(); const c=await deferred.userChoice; if(c.outcome==='accepted') installBtn.hidden=true; });
+
+// ======= Timer hooks =======
+const tDisp=document.getElementById('tDisp'); const tBar=document.getElementById('tBar');
+document.getElementById('tStart').addEventListener('click', startT);
+document.getElementById('tStop').addEventListener('click', stopT);
+document.getElementById('tReset').addEventListener('click', resetT);
+
+// ======= Export/Import/Reset =======
+document.getElementById('export').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify(localStorage,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dominance-v2-backup.json'; a.click();
+});
+document.getElementById('importFile').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return; const txt=await f.text();
+  try{ const obj=JSON.parse(txt); localStorage.clear(); Object.keys(obj).forEach(k=> localStorage.setItem(k,obj[k])); location.reload(); }catch{ alert('File non valido'); }
+});
+document.getElementById('resetAll').addEventListener('click',()=>{ if(confirm('Reset totale?')){ localStorage.clear(); location.reload(); } });
+
+// ======= Init =======
+async function init(){
+  if('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('/sw.js'); }catch(e){ console.warn('SW err',e);} }
+  renderHome(); loadProfile();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
